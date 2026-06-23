@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GtoMnK Configuration - Image Mode</title>
+    <script src="chart.js"></script>
+    <script>
+        if (typeof Chart === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>');
+        }
+    </script>
+    <style>
+        :root {
+            --bg-color: rgb(24, 25, 26);
+            --text-color: #e0e0e0;
+            --accent: #007acc;
+            --danger: #d32f2f;
+            --success: #4CAF50;
+            --border: #333;
+            --active: rgba(0, 175, 80, 0.8);
+            --recording: rgba(255, 152, 0, 0.8);
+            --overlay-bg: rgba(0, 0, 0, 0.6);
+        }
+
+        .hidden-context-menu {
+            display: none;
+            position: absolute;
+            background: rgb(45, 45, 45);
+            border: 1px solid #555;
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow: hidden;
+            min-width: 120px;
+        }
+
+            .hidden-context-menu.show {
+                display: block;
+                animation: fadeIn 0.15s ease-out;
+            }
+
+        .menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            color: #eee;
+            font-size: 14px;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+            .menu-item:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+
+            .menu-item.clear-item:hover {
+                background: rgba(211, 47, 47, 0.8); /* Turns red on hover */
+            }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .panel {
+            background: rgb(36, 37, 38);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 8px;
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+        }
+
+        .controller-wrapper {
+            position: relative;
+            flex: 2;
+            min-width: 600px;
+            background: rgb(36, 37, 38);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+        }
+
+        .mode-toolbar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: #202020;
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid #444;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 50;
+        }
+
+        .mode-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 20px;
+            transition: background 0.2s;
+            user-select: none;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+            .mode-option:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+            }
+
+            .mode-option input[type="radio"],
+            .mode-option input[type="checkbox"] {
+                accent-color: var(--accent);
+                cursor: pointer;
+                width: 16px;
+                height: 16px;
+            }
+
+        .layer-toolbar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            background: #1a1a1a;
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            z-index: 50;
+        }
+
+        .image-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+        }
+
+            .image-container img {
+                width: 100%;
+                height: auto;
+                display: block;
+                user-select: none;
+                -webkit-user-drag: none;
+            }
+
+        .btn-overlay {
+            position: absolute;
+            background-color: var(--overlay-bg);
+            border: 2px solid rgba(255,255,255,0.4);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            text-shadow: 1px 1px 2px black;
+            transition: all 0.1s;
+            border-radius: 50%;
+            user-select: none;
+            overflow: hidden;
+            white-space: nowrap;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+            .btn-overlay:hover {
+                border-color: white;
+                background-color: rgba(255,255,255,0.2);
+            }
+
+            .btn-overlay.recording {
+                background-color: var(--recording) !important;
+                border-color: #ffe0b2;
+                animation: pulse 1s infinite;
+                z-index: 10;
+            }
+
+            .btn-overlay.active-controller {
+                background-color: var(--active) !important;
+                border-color: #a5d6a7;
+                transform: scale(1.1);
+                z-index: 10;
+            }
+
+            .btn-overlay.flash-red {
+                animation: breathRed 0.5s ease-in-out 2; /* 0.5s per breath, runs 2 times */
+                z-index: 20;
+            }
+
+        @keyframes breathRed {
+            0%, 100% {
+                background-color: var(--overlay-bg);
+                border-color: rgba(255, 255, 255, 0.4);
+                transform: scale(1);
+            }
+
+            50% {
+                background-color: rgb(180, 0, 0, 0.8);
+                border-color: #ff8a80;
+                transform: scale(1.15);
+            }
+        }
+
+            .btn-overlay.disabled {
+                background-color: rgba(50, 50, 50, 0.5);
+                border-color: #444;
+                color: #777;
+                pointer-events: none;
+                cursor: not-allowed;
+            }
+
+        .shape-rect {
+            border-radius: 8px;
+        }
+
+        .shape-round {
+            border-radius: 50%;
+        }
+
+        #modifier-banner {
+            display: none;
+            background-color: #ff9800;
+            color: #111;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            width: 80%;
+            animation: fadeIn 0.3s;
+            z-index: 60;
+        }
+
+            #modifier-banner button {
+                background-color: #d32f2f;
+                color: white;
+                border: none;
+                padding: 5px 15px;
+                margin-top: 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+                width: auto;
+                font-size: 14px;
+            }
+
+                #modifier-banner button:hover {
+                    background-color: #b71c1c;
+                }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .hybrid-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+            .hybrid-input input[type="range"] {
+                width: 80px;
+                accent-color: var(--accent);
+                cursor: pointer;
+            }
+
+            .hybrid-input input[type="number"] {
+                width: 60px;
+                background: #3c3c3c;
+                border: 1px solid #555;
+                color: white;
+                padding: 5px;
+                border-radius: 4px;
+            }
+
+        select:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #2a2a2a;
+            color: #777;
+        }
+
+        input[type="text"], select {
+            background: #3c3c3c;
+            border: 1px solid #555;
+            color: white;
+            padding: 5px;
+            border-radius: 4px;
+            width: 100px;
+        }
+
+        h2 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .arrow-btn {
+            width: 28px;
+            height: 28px;
+            background-color: #333;
+            color: #aaa;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+            .arrow-btn:hover {
+                background-color: #444;
+                color: white;
+            }
+
+            .arrow-btn.open {
+                transform: rotate(180deg);
+            }
+
+        .hidden-content {
+            display: none;
+            padding: 10px;
+            background: #202020;
+            border: 1px solid #333;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            margin-top: -5px;
+        }
+
+            .hidden-content.show {
+                display: block;
+                animation: fadeIn 0.3s;
+            }
+
+        #gp-status {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+            width: 100%;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .connected {
+            color: #4caf50;
+        }
+
+        .disconnected {
+            color: #f44336;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 1400px;
+            margin-top: 20px;
+        }
+
+        button {
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+            button.download-btn {
+                background-color: var(--success);
+                flex: 2;
+            }
+
+                button.download-btn:hover {
+                    background-color: #388E3C;
+                }
+
+            button.upload-btn {
+                background-color: var(--accent);
+                flex: 1;
+            }
+
+                button.upload-btn:hover {
+                    background-color: #005fa3;
+                }
+
+            button.reset-btn {
+                background-color: var(--danger);
+                flex: 0 0 120px;
+            }
+
+                button.reset-btn:hover {
+                    background-color: #b71c1c;
+                }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>GtoMnK Configuration</h1>
+    <div id="gp-status" class="disconnected">Waiting for Controller... Press a button.</div>
+
+    <div id="custom-context-menu" class="hidden-context-menu">
+        <div class="menu-item" id="menu-item-map">Map</div>
+        <div class="menu-item clear-item" id="menu-item-clear">Clear</div>
+    </div>
+
+    <textarea id="virtual-key-input" style="position: absolute; opacity: 0; width: 1px; height: 1px; font-size: 16px; z-index: -1;"
+              autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+
+    <div class="container">
+        <div class="panel">
+            <h2>Settings</h2>
+
+            <div class="setting-row">
+                <label>Game Name</label>
+                <input type="text" id="GameName" title="Name of the game for this config" value="" style="width: 150px;">
+            </div>
+
+            <div class="setting-row">
+                <label>Input Method</label>
+                <select id="InputMethod" title="Hybrid (Uses both recommended)&#10;PostMessage (Compatible with most of the modern games)&#10;RawInput (Compatible with most of the old games)">
+                    <option value="0">PostMessage</option>
+                    <option value="1">RawInput</option>
+                    <option value="2" selected>Hybrid</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <label>Thumbstick To Mouse</label>
+                <select id="ThumbstickToMouse" title="Controls which analog stick is used for mouse movement." onchange="updateUIState()">
+                    <option value="0">Disabled</option>
+                    <option value="1">Left Stick</option>
+                    <option value="2">Right Stick</option>
+                </select>
+            </div>
+
+            <div class="setting-row"><label>Draw Cursor</label><input type="checkbox" id="DrawProtoFakeCursor" title="Enable this if the game doesn't have a cursor."></div>
+
+            <div class="setting-row">
+                <label>Sensitivity</label>
+                <div class="input-group">
+                    <div class="arrow-btn" onclick="toggleSection(this, 'sens-options')" title="Advanced Mouse Options">▼</div>
+                    <div class="hybrid-input">
+                        <input type="range" id="Sensitivity_slider" min="0" max="20" step="0.1" value="2.60" oninput="syncHybrid('Sensitivity')">
+                        <input type="number" id="Sensitivity" title="The base speed of the mouse move.&#10;Higher values make the cursor move faster." value="2.60" step="0.1" oninput="syncHybrid('Sensitivity', true)">
+                    </div>
+                </div>
+            </div>
+            <div id="sens-options" class="hidden-content">
+                <div class="note-row"><p><strong>NOTE:</strong> It's recommended to set the lowest sensitivity in the game for the smoothest mouse movement.</p></div>
+                <div class="setting-row">
+                    <label title="Sensitivity Multiplier. 1.0 uses global Sensitivity.">Sensitivity Multiplier</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="Sensitivity_Multiplier_slider" min="0" max="20" step="0.01" value="2.40" oninput="syncHybrid('Sensitivity_Multiplier')">
+                        <input type="number" id="Sensitivity_Multiplier" title="Further scales the base sensitivity." value="2.40" step="0.01" oninput="syncHybrid('Sensitivity_Multiplier', true)">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label title="Horizontal Sensitivity. 0.0 uses global Sensitivity.">Horiz. Sens.</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="Horizontal_Sensitivity_slider" min="-1" max="1" step="0.01" value="0.00" oninput="syncHybrid('Horizontal_Sensitivity')">
+                        <input type="number" id="Horizontal_Sensitivity" title="Horizontal Sensitivity.&#10;Range: -1.0 (-100%) to 1.0 (100%)." value="0.00" step="0.01" oninput="syncHybrid('Horizontal_Sensitivity', true)">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label title="Vertical Sensitivity. 0.0 uses global Sensitivity.">Vert. Sens.</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="Vertical_Sensitivity_slider" min="-1" max="1" step="0.01" value="0.00" oninput="syncHybrid('Vertical_Sensitivity')">
+                        <input type="number" id="Vertical_Sensitivity" title="Vertical Sensitivity.&#10;Range: -1.0 (-100%) to 1.0 (100%)." value="0.00" step="0.01" oninput="syncHybrid('Vertical_Sensitivity', true)">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label>Max Threshold</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="Max_Threshold_slider" min="0" max="0.15" step="0.005" value="0.150" oninput="syncHybrid('Max_Threshold')">
+                        <input type="number" id="Max_Threshold" title="An outer deadzone. Allows the mouse to reach max speed before the stick is fully pushed.&#10;Range: 0.0 to 0.15 (15%)." value="0.150" step="0.001" oninput="syncHybrid('Max_Threshold', true)">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label title="Look Accel Multiplier. 1.0 uses global Sensitivity.">Look Accel</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="Look_Accel_Multiplier_slider" min="1" max="2" step="0.005" value="1.380" oninput="syncHybrid('Look_Accel_Multiplier')">
+                        <input type="number" id="Look_Accel_Multiplier" title="Boosts speed when stick is near the edge." value="1.380" step="0.05" oninput="syncHybrid('Look_Accel_Multiplier', true)">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label>Curve Slope</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="Curve_Slope_slider" min="0" max="1" step="0.005" value="0.145" oninput="syncHybrid('Curve_Slope')">
+                        <input type="number" id="Curve_Slope" title="The initial, linear part of the movement." value="0.145" step="0.01" oninput="syncHybrid('Curve_Slope', true)">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label>Curve Exponent</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="Curve_Exponent_slider" min="1" max="5" step="0.005" value="1.660" oninput="syncHybrid('Curve_Exponent')">
+                        <input type="number" id="Curve_Exponent" title="How sharply the speed ramps up." value="1.660" step="0.05" oninput="syncHybrid('Curve_Exponent', true)">
+                    </div>
+                </div>
+
+                <div class="setting-row" style="flex-direction: column; align-items: stretch; margin-top: 15px;">
+                    <label style="margin-bottom: 10px; text-align: center;">Sensitivity Curve Preview</label>
+                    <div style="position: relative; height: 250px; width: 100%; background: #1e1e1e; border: 1px solid #444; border-radius: 4px; padding: 10px; box-sizing: border-box;">
+                        <canvas id="curveChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <label>Radial Deadzone</label>
+                <div class="input-group">
+                    <div class="arrow-btn" onclick="toggleSection(this, 'deadzone-options')" title="Advanced Deadzone Options">▼</div>
+                    <div class="hybrid-input">
+                        <input type="range" id="Radial_Deadzone_slider" min="0" max="1" step="0.01" value="0.10" oninput="syncHybrid('Radial_Deadzone')">
+                        <input type="number" id="Radial_Deadzone" title="The circular deadzone with no guiding.&#10;Range: 0.0 to 1.0 (100%)." value="0.10" step="0.01" oninput="syncHybrid('Radial_Deadzone', true)">
+                    </div>
+                </div>
+            </div>
+            <div id="deadzone-options" class="hidden-content">
+                <div class="setting-row">
+                    <label>Axial Deadzone</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="Axial_Deadzone_slider" min="0" max="1" step="0.01" value="0.00" oninput="syncHybrid('Axial_Deadzone')">
+                        <input type="number" id="Axial_Deadzone" title="Square-shaped deadzone with cardinal guiding.&#10;Range: 0.0 to 1.0 (100%)." value="0.0" step="0.01" oninput="syncHybrid('Axial_Deadzone', true)">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label title="Deadzone for using sticks as digital buttons">StickAsBtn Dz</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="StickAsButtonDeadzone_slider" min="0" max="1" step="0.01" value="0.25" oninput="syncHybrid('StickAsButtonDeadzone')">
+                        <input type="number" id="StickAsButtonDeadzone" title="Thumbstick As Button Deadzone.&#10;Range: 0.0 to 1.0 (100%)." value="0.25" step="0.01" oninput="syncHybrid('StickAsButtonDeadzone', true)">
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <label title="0-255 Threshold for triggers">Trigger Threshold</label>
+                    <div class="hybrid-input">
+                        <input type="range" id="TriggerThreshold_slider" min="0" max="255" step="1" value="40" oninput="syncHybrid('TriggerThreshold')">
+                        <input type="number" id="TriggerThreshold" title="Range: 0 (hair trigger) to 255 (must be pulled all the way)." value="40" step="1" oninput="syncHybrid('TriggerThreshold', true)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <label>API Hooks</label>
+                <div class="input-group">
+                    <div class="arrow-btn" onclick="toggleSection(this, 'hooks-options')" title="API Hook Options">▼</div>
+                    <span style="font-size:0.8em; color:#777; line-height: 28px;"><!--(Advanced)>--></span>
+                </div>
+            </div>
+            <div id="hooks-options" class="hidden-content">
+                <div class="setting-row"><label>GetCursorPos</label><input type="checkbox" id="GetCursorposHook" title="GetCursorPos Hook is needed for most of the games." checked></div>
+                <div class="setting-row"><label>SetCursorPos</label><input type="checkbox" id="SetCursorposHook" title="SetCursorPos Hook is needed for most of the games." checked></div>
+                <div class="setting-row"><label>ClipCursor</label><input type="checkbox" id="ClipCursorHook" title="ClipCursor Hook" checked></div>
+                <div class="setting-row"><label>GetKeyState</label><input type="checkbox" id="GetKeystateHook" title="GetKeyState Hook" checked></div>
+                <div class="setting-row"><label>GetAsyncKey</label><input type="checkbox" id="GetAsynckeystateHook" title="GetAsyncKeyState Hook" checked></div>
+                <div class="setting-row"><label>GetKeyboardState</label><input type="checkbox" id="GetKeyboardstateHook" title="GetKeyboardState Hook" checked></div>
+            </div>
+
+            <div class="setting-row">
+                <label>Message Filters</label>
+                <div class="input-group">
+                    <div class="arrow-btn" onclick="toggleSection(this, 'filters-options')" title="Message Filter Options">▼</div>
+                    <span style="font-size:0.8em; color:#777; line-height: 28px;"><!--(Advanced)>--></span>
+                </div>
+            </div>
+            <div id="filters-options" class="hidden-content">
+                <div class="setting-row"><label>RawInput</label><input type="checkbox" id="RawInputFilter" title="Filters the real mouse and keyboard for RawInput."></div>
+                <div class="setting-row"><label>Mouse Move</label><input type="checkbox" id="MouseMoveFilter" title="Filters the real mouse move."></div>
+                <div class="setting-row"><label>Mouse Activate</label><input type="checkbox" id="MouseActivateFilter" title=""></div>
+                <div class="setting-row"><label>Window Activate</label><input type="checkbox" id="WindowActivateFilter" title=""></div>
+                <div class="setting-row"><label>Window Activate App</label><input type="checkbox" id="WindowActivateAppFilter" title=""></div>
+                <div class="setting-row"><label>Mouse Wheel</label><input type="checkbox" id="MouseWheelFilter" title=""></div>
+                <div class="setting-row"><label>Mouse Button</label><input type="checkbox" id="MouseButtonFilter" title="Prevents `the real mouse` interactions."></div>
+                <div class="setting-row"><label>Keyboard Button</label><input type="checkbox" id="KeyboardButtonFilter" title="Prevents `the real keyboard` interactions."></div>
+            </div>
+        </div>
+
+        <div class="controller-wrapper">
+
+            <div id="modifier-banner">
+                Select a button on the controller below to assign as the <span id="pending-mod-name" style="color: white; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;"></span> modifier.
+                <br>
+                <button onclick="cancelModifier()">Cancel</button>
+            </div>
+
+            <div class="layer-toolbar">
+                <label class="mode-option" style="font-weight: bold; color: white;">
+                    <input type="radio" name="layerSwitch" value="Basic" checked onchange="switchLayer('Basic')"> Basic
+                </label>
+                <div style="width: 1px; height: 16px; background: #555; margin: 0 5px;"></div>
+                <label class="mode-option" style="font-weight: bold; color: white;">
+                    <input type="radio" name="layerSwitch" value="Fn1" onchange="switchLayer('Fn1')"> Fn1
+                </label>
+                <div style="width: 1px; height: 16px; background: #555; margin: 0 5px;"></div>
+                <label class="mode-option" style="font-weight: bold; color: white;">
+                    <input type="radio" name="layerSwitch" value="Fn2" onchange="switchLayer('Fn2')"> Fn2
+                </label>
+            </div>
+
+            <div class="mode-toolbar">
+                <label class="mode-option" title="Standard single action binding">
+                    <input type="radio" name="bindMode" value="0" checked onchange="updateBindUI()"> Normal
+                </label>
+                <label class="mode-option" title="1st Action: On Release | 2nd Action: On Hold">
+                    <input type="radio" name="bindMode" value="1" onchange="updateBindUI()"> Release / Hold
+                </label>
+                <div style="width: 1px; height: 20px; background: #555; margin: 0 5px;"></div>
+
+                <label class="mode-option" id="lblComp1" title="Require multiple keys">
+                    <input type="checkbox" id="useCompound1"> <span id="txtComp1">+ Compound</span>
+                </label>
+                <label class="mode-option" id="lblComp2" title="Require multiple keys for Hold" style="display: none;">
+                    <input type="checkbox" id="useCompound2"> <span>+ Comp. Hold</span>
+                </label>
+            </div>
+
+            <div class="image-container" id="overlay-container">
+                <img src="GtoMnK_Config.png"
+                     onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/SAM1430B/GtoMnK/master/GtoMnK_DLL/Documents/GtoMnK_Config.png'"
+                     alt="Xbox Controller">
+            </div>
+        </div>
+    </div>
+
+    <div class="button-row">
+        <input type="file" id="ini-upload" accept=".ini" style="display: none;" onchange="handleFileUpload(event)">
+        <button class="download-btn" onclick="generateINI()">Export</button>
+        <button class="upload-btn" onclick="document.getElementById('ini-upload').click()">Import</button>
+        <button class="reset-btn" onclick="resetToDefaults()">Reset</button>
+    </div>
+
+    <script>
+        //TOGGLE SECTIONS
+        function toggleSection(btn, sectionId) {
+            const content = document.getElementById(sectionId);
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                btn.classList.remove('open');
+            } else {
+                content.classList.add('show');
+                btn.classList.add('open');
+            }
+        }
+
+        // HYBRID INPUT SYNC
+        function syncHybrid(id, fromNumber = false) {
+            const numInput = document.getElementById(id);
+            const slider = document.getElementById(id + '_slider');
+            if (!numInput || !slider) return;
+
+            if (fromNumber) {
+                slider.value = numInput.value;
+            } else {
+                numInput.value = slider.value;
+            }
+
+            // DIRECTLY call the chart update function instead of relying on event triggers
+            if (typeof updateCurveChart === 'function') {
+                updateCurveChart();
+            }
+        }
+
+        //BUTTON POSITIONS
+        const positions = {
+            "A": { t: 53, l: 73.5, w: 6.5, h: 9, s: 'round' },
+            "B": { t: 44.1, l: 81.3, w: 6.6, h: 8, s: 'round' },
+            "X": { t: 45, l: 66.5, w: 6.5, h: 8.5, s: 'round' },
+            "Y": { t: 35, l: 74, w: 6.95, h: 10, s: 'round' },
+            "D_UP": { t: 62, l: 33.5, w: 4, h: 5, s: 'rect' },
+            "D_DOWN": { t: 74, l: 34, w: 4, h: 5, s: 'rect' },
+            "D_LEFT": { t: 68.5, l: 29, w: 4, h: 5, s: 'rect' },
+            "D_RIGHT": { t: 68, l: 39, w: 4, h: 5, s: 'rect' },
+            "LSB": { t: 46.5, l: 16.1, w: 11, h: 14, s: 'round' },
+            "RSB": { t: 67, l: 57, w: 11, h: 13.5, s: 'round' },
+            "LSU": { t: 37, l: 19, w: 5, h: 5, s: 'rect' },
+            "LSD": { t: 62, l: 19, w: 5, h: 5, s: 'rect' },
+            "LSL": { t: 49, l: 11, w: 4, h: 6, s: 'rect' },
+            "LSR": { t: 49, l: 29, w: 4, h: 6, s: 'rect' },
+            "RSU": { t: 57, l: 60, w: 5, h: 5, s: 'rect' },
+            "RSD": { t: 82, l: 60, w: 5, h: 5, s: 'rect' },
+            "RSL": { t: 68, l: 51, w: 4, h: 6, s: 'rect' },
+            "RSR": { t: 68, l: 70, w: 4, h: 6, s: 'rect' },
+            "Back": { t: 46.8, l: 37.3, w: 5, h: 5.3, s: 'round' },
+            "Start": { t: 46.8, l: 57.3, w: 5, h: 5.3, s: 'round' },
+            "LB": { t: 21, l: 16, w: 12, h: 7, s: 'rect' },
+            "RB": { t: 21, l: 71, w: 12, h: 7, s: 'rect' },
+            "LT": { t: 8, l: 22, w: 6, h: 8, s: 'rect' },
+            "RT": { t: 8, l: 71.7, w: 6, h: 8, s: 'rect' }
+        };
+
+        // Default button mapping for controllers
+        const xinputButtons = [
+            { id: "A", idx: 0, val: "13" }, { id: "B", idx: 1, val: "0" },
+            { id: "X", idx: 2, val: "42" }, { id: "Y", idx: 3, val: "0" },
+            { id: "LB", idx: 4, val: "0" }, { id: "RB", idx: 5, val: "0" },
+            { id: "LT", idx: 6, val: "-2" }, { id: "RT", idx: 7, val: "-1" },
+            { id: "Back", idx: 8, val: "3" }, { id: "Start", idx: 9, val: "1" },
+            { id: "LSB", idx: 10, val: "4" }, { id: "RSB", idx: 11, val: "0" },
+            { id: "D_UP", idx: 12, val: "14" }, { id: "D_DOWN", idx: 13, val: "15" },
+            { id: "D_LEFT", idx: 14, val: "16" }, { id: "D_RIGHT", idx: 15, val: "17" },
+            { id: "LSU", idx: -1, val: "47" }, { id: "LSD", idx: -1, val: "43" },
+            { id: "LSL", idx: -1, val: "25" }, { id: "LSR", idx: -1, val: "28" },
+            { id: "RSU", idx: -1, val: "0" }, { id: "RSD", idx: -1, val: "0" },
+            { id: "RSL", idx: -1, val: "0" }, { id: "RSR", idx: -1, val: "0" }
+        ];
+
+        //REVERSE LOOKUP MAP
+        const codeToName = {
+            "-1": "🖱️L", "-2": "🖱️R", "-3": "🖱️M", "-4": "X1", "-5": "X2",
+            "-6": "Whl↑", "-7": "Whl↓", "-8": "Dbl",
+            "0": "None", "1": "Esc", "2": "Ent", "3": "Tab", "13": "Spc",
+            "8": "Ctrl", "18": "Bsp", "19": "Del", "20": "Ins",
+            "21": "End", "22": "Home", "23": "PgUp", "24": "PgDn",
+            "14": "↑", "15": "↓", "16": "←", "17": "→",
+            "4": "Shft", "5": "LShft", "6": "RShft",
+            "7": "Ctrl", "8": "LCtrl", "9": "RCtrl",
+            "10": "Alt", "11": "LAlt", "12": "RAlt",
+            "101": "Caps", "102": "NumLk", "103": "ScrLk",
+            "104": ";", "105": "=", "106": ",",
+            "107": "-", "108": ".", "109": "/",
+            "110": "`", "111": "[", "112": "\\",
+            "113": "]", "114": "'",
+            "83": "Num+", "84": "Num-", "85": "Num*", "86": "Num/", "87": "Num.", "88": "NumEnt",
+            "91": "NumIns", "92": "NumEnd", "93": "Num↓", "94": "NumPgDn",
+            "95": "Num←", "96": "Num→",
+            "97": "NumHom", "98": "Num↑", "99": "NumPgUp", "100": "NumDel"
+        };
+
+        for (let i = 0; i < 26; i++) codeToName[25 + i] = String.fromCharCode(65 + i);
+        for (let i = 0; i < 10; i++) codeToName[51 + i] = i.toString();
+        for (let i = 1; i <= 12; i++) codeToName[60 + i] = "F" + i;
+        for (let i = 0; i < 10; i++) codeToName[73 + i] = "Num" + i;
+
+        function getLabel(code) {
+            const c = String(code);
+            if (codeToName[c]) return codeToName[c];
+            return c;
+        }
+
+        const keyMap = {
+            "Escape": 1, "Enter": 2, "Tab": 3, "Space": 13, "Backspace": 18, "Delete": 19, "Insert": 20, "End": 21, "Home": 22, "PageUp": 23, "PageDown": 24,
+            "ShiftLeft": 4, "ShiftRight": 4, "ControlLeft": 7, "ControlRight": 7, "AltLeft": 10, "AltRight": 10,
+            "ArrowUp": 14, "ArrowDown": 15, "ArrowLeft": 16, "ArrowRight": 17,
+            "CapsLock": 101, "NumLock": 102, "ScrollLock": 103,
+            "Semicolon": 104, "Equal": 105, "Comma": 106, "Minus": 107, "Period": 108, "Slash": 109, "Backquote": 110, "BracketLeft": 111, "Backslash": 112, "BracketRight": 113, "Quote": 114,
+            "NumpadAdd": 83, "NumpadSubtract": 84, "NumpadMultiply": 85, "NumpadDivide": 86, "NumpadDecimal": 87, "NumpadEnter": 88
+        };
+        for (let i = 0; i < 26; i++) keyMap["Key" + String.fromCharCode(65 + i)] = 25 + i;
+        for (let i = 1; i <= 12; i++) keyMap["F" + i] = 60 + i;
+        for (let i = 0; i < 10; i++) keyMap["Digit" + i] = 51 + i;
+        for (let i = 0; i < 10; i++) keyMap["Numpad" + i] = 73 + i;
+
+        const symbolMap = {
+            "-": "Minus", "=": "Equal", "[": "BracketLeft", "]": "BracketRight",
+            ";": "Semicolon", "'": "Quote", ",": "Comma", ".": "Period", "/": "Slash",
+            "\\": "Backslash", "`": "Backquote"
+        };
+
+        let activeLayer = 'Basic';
+        let pendingModifier = null;
+        let currentRecordingId = null;
+        let previousValue = null;
+        let previousLabel = null;
+        let gamepadIndex = null;
+
+        let recordingStep = 0;
+        let capturedKeys = [];
+        let recordingPrompts = [];
+
+        // LAYER SWITCHER
+        function switchLayer(layer) {
+            if (currentRecordingId) finishRecording(document.getElementById(`btn-${currentRecordingId}`));
+            cancelModifier();
+
+            if (layer === 'Fn1' || layer === 'Fn2') {
+                let hasModifier = false;
+                document.querySelectorAll('.btn-overlay').forEach(el => {
+                    if (el.dataset.valBasic === layer) hasModifier = true;
+                });
+
+                if (!hasModifier) {
+                    pendingModifier = layer;
+                    document.getElementById('pending-mod-name').innerText = layer;
+                    document.getElementById('modifier-banner').style.display = 'block';
+
+                    document.querySelector('input[name="layerSwitch"][value="Basic"]').checked = true;
+                    activeLayer = 'Basic';
+                    updateButtonDisplays('Basic');
+                    updateUIState();
+                    return;
+                }
+            }
+
+            activeLayer = layer;
+            updateButtonDisplays(layer);
+            updateUIState();
+        }
+
+        function updateButtonDisplays(layer) {
+            document.querySelectorAll('.btn-overlay').forEach(el => {
+                let val, txt;
+                if (layer === 'Basic') { val = el.dataset.valBasic; txt = el.dataset.txtBasic; }
+                else if (layer === 'Fn1') { val = el.dataset.valFn1; txt = el.dataset.txtFn1; }
+                else if (layer === 'Fn2') { val = el.dataset.valFn2; txt = el.dataset.txtFn2; }
+
+                el.dataset.value = val;
+                el.innerText = txt;
+                el.title = txt;
+            });
+        }
+
+        function cancelModifier() {
+            pendingModifier = null;
+            document.getElementById('modifier-banner').style.display = 'none';
+        }
+
+        function assignModifier(btnId, modifier) {
+            const el = document.getElementById(`btn-${btnId}`);
+
+            document.querySelectorAll('.btn-overlay').forEach(otherEl => {
+                if (otherEl.dataset.valBasic === modifier) {
+                    otherEl.dataset.valBasic = "0";
+                    otherEl.dataset.txtBasic = "None";
+                    if (activeLayer === 'Basic') {
+                        otherEl.dataset.value = "0";
+                        otherEl.innerText = "None";
+                    }
+                }
+            });
+
+            el.dataset.valBasic = modifier;
+            el.dataset.txtBasic = modifier;
+
+            if (activeLayer === 'Basic') {
+                el.dataset.value = modifier;
+                el.innerText = modifier;
+                el.title = modifier;
+            }
+
+            const targetLayer = pendingModifier;
+            cancelModifier();
+
+            document.querySelector(`input[name="layerSwitch"][value="${targetLayer}"]`).checked = true;
+            switchLayer(targetLayer);
+        }
+
+        //RENDER BUTTONS
+        const container = document.getElementById('overlay-container');
+        xinputButtons.forEach(btn => {
+            const pos = positions[btn.id];
+            if (!pos) return;
+
+            const div = document.createElement('div');
+            div.className = `btn-overlay shape-${pos.s}`;
+            div.id = `btn-${btn.id}`;
+            div.dataset.idx = btn.idx;
+
+            div.style.top = pos.t + "%";
+            div.style.left = pos.l + "%";
+            div.style.width = pos.w + "%";
+            div.style.height = pos.h + "%";
+
+            const displayLabel = (btn.val == "0") ? "None" : getLabel(btn.val);
+            div.dataset.valBasic = btn.val;
+            div.dataset.txtBasic = displayLabel;
+
+            let fnDefault = "0";
+            if (btn.id === 'LSU') fnDefault = "47";
+            if (btn.id === 'LSD') fnDefault = "43";
+            if (btn.id === 'LSL') fnDefault = "25";
+            if (btn.id === 'LSR') fnDefault = "28";
+
+            div.dataset.valFn1 = fnDefault;
+            div.dataset.txtFn1 = (fnDefault == "0") ? "None" : getLabel(fnDefault);
+
+            div.dataset.valFn2 = fnDefault;
+            div.dataset.txtFn2 = (fnDefault == "0") ? "None" : getLabel(fnDefault);
+
+            div.dataset.value = div.dataset.valBasic;
+            div.innerText = div.dataset.txtBasic;
+            div.title = div.dataset.txtBasic;
+
+            // Left Click to Record
+            div.onclick = (e) => {
+                if (div.classList.contains('disabled')) return;
+                e.stopPropagation();
+
+                if (pendingModifier) {
+                    assignModifier(btn.id, pendingModifier);
+                } else {
+                    startRecording(btn.id);
+                }
+            };
+
+            // Right Click to Open Custom Menu
+            div.oncontextmenu = (e) => {
+                if (div.classList.contains('disabled')) return;
+                e.preventDefault();
+                e.stopPropagation();
+
+                targetButtonForMenu = btn.id; // Remember which button we right-clicked
+
+                const menu = document.getElementById('custom-context-menu');
+                menu.style.left = e.pageX + 'px';
+                menu.style.top = e.pageY + 'px';
+                menu.classList.add('show');
+            };
+
+            // Middle Click to Flash Red and Reset
+            div.onmousedown = (e) => {
+                if (div.classList.contains('disabled')) return;
+
+                // Button 1 is Middle Click
+                if (e.button === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (pendingModifier) return;
+
+                    div.classList.add('flash-red');
+
+                    // CHANGE THIS LINE: Set the timeout to 1000ms to match the new animation duration
+                    setTimeout(() => { div.classList.remove('flash-red'); }, 1000);
+
+                    div.dataset.value = "0";
+                    div.innerText = "None";
+                    div.title = "None";
+
+                    if (activeLayer === 'Basic') { div.dataset.valBasic = "0"; div.dataset.txtBasic = "None"; }
+                    else if (activeLayer === 'Fn1') { div.dataset.valFn1 = "0"; div.dataset.txtFn1 = "None"; }
+                    else if (activeLayer === 'Fn2') { div.dataset.valFn2 = "0"; div.dataset.txtFn2 = "None"; }
+
+                    if (currentRecordingId === btn.id) {
+                        finishRecording(div);
+                    }
+                }
+            };
+
+            container.appendChild(div);
+        });
+
+        // UI STATE LOGIC
+        function updateBindUI() {
+            const mode = document.querySelector('input[name="bindMode"]:checked').value;
+            const lbl1 = document.getElementById('lblComp1');
+            const txt1 = document.getElementById('txtComp1');
+            const lbl2 = document.getElementById('lblComp2');
+
+            if (mode === "0") {
+                txt1.innerText = "+ Compound";
+                lbl2.style.display = "none";
+            } else {
+                txt1.innerText = "+ Comp. Release";
+                lbl2.style.display = "flex";
+            }
+        }
+
+        function updateUIState() {
+            const thumbStick = document.getElementById('ThumbstickToMouse').value;
+
+            const leftStickDirs = ['LSU', 'LSD', 'LSL', 'LSR'];
+            const rightStickDirs = ['RSU', 'RSD', 'RSL', 'RSR'];
+
+            // Reset everything first
+            document.querySelectorAll('.btn-overlay').forEach(el => el.classList.remove('disabled'));
+
+            // Disable mapping for whichever stick is controlling the mouse
+            if (thumbStick === "1") {
+                leftStickDirs.forEach(id => {
+                    const el = document.getElementById(`btn-${id}`);
+                    if (el) el.classList.add('disabled');
+                });
+            } else if (thumbStick === "2") {
+                rightStickDirs.forEach(id => {
+                    const el = document.getElementById(`btn-${id}`);
+                    if (el) el.classList.add('disabled');
+                });
+            }
+
+            if (activeLayer === 'Fn1' || activeLayer === 'Fn2') {
+                document.querySelectorAll('.btn-overlay').forEach(el => {
+                    if (el.dataset.valBasic === activeLayer) {
+                        el.classList.add('disabled');
+                        el.innerText = `[${activeLayer}]`; // Add a clear visual label
+                        el.title = `This button acts as the ${activeLayer} trigger.`;
+                    }
+                });
+            }
+        }
+
+        let targetButtonForMenu = null;
+
+        // Map Button Logic
+        document.getElementById('menu-item-map').onclick = () => {
+            const menu = document.getElementById('custom-context-menu');
+            menu.classList.remove('show'); // Hide menu
+
+            if (targetButtonForMenu) {
+                if (pendingModifier) {
+                    assignModifier(targetButtonForMenu, pendingModifier);
+                } else {
+                    startRecording(targetButtonForMenu);
+                }
+            }
+        };
+
+        // Clear Button Logic
+        document.getElementById('menu-item-clear').onclick = () => {
+            const menu = document.getElementById('custom-context-menu');
+            menu.classList.remove('show'); // Hide menu
+
+            if (targetButtonForMenu && !pendingModifier) {
+                const div = document.getElementById(`btn-${targetButtonForMenu}`);
+
+                // Trigger your red flash animation (Using 1000ms if you added the breathing effect)
+                div.classList.add('flash-red');
+                setTimeout(() => { div.classList.remove('flash-red'); }, 1000);
+
+                // Reset Values
+                div.dataset.value = "0";
+                div.innerText = "None";
+                div.title = "None";
+
+                if (activeLayer === 'Basic') { div.dataset.valBasic = "0"; div.dataset.txtBasic = "None"; }
+                else if (activeLayer === 'Fn1') { div.dataset.valFn1 = "0"; div.dataset.txtFn1 = "None"; }
+                else if (activeLayer === 'Fn2') { div.dataset.valFn2 = "0"; div.dataset.txtFn2 = "None"; }
+
+                if (currentRecordingId === targetButtonForMenu) {
+                    finishRecording(div);
+                }
+            }
+        };
+
+        // Hide the menu if the user left-clicks anywhere else
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('custom-context-menu');
+            if (menu && menu.classList.contains('show')) {
+                menu.classList.remove('show');
+            }
+        });
+
+        function startRecording(btnId) {
+            const el = document.getElementById(`btn-${btnId}`);
+            if (el.classList.contains('disabled')) return;
+
+            const hiddenInput = document.getElementById('virtual-key-input');
+            const rect = el.getBoundingClientRect();
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+
+            hiddenInput.style.top = (rect.top + scrollTop) + "px";
+            hiddenInput.style.left = (rect.left + scrollLeft) + "px";
+            hiddenInput.style.width = rect.width + "px";
+            hiddenInput.style.height = rect.height + "px";
+
+            hiddenInput.value = ".";
+            hiddenInput.focus();
+
+            if (currentRecordingId && currentRecordingId !== btnId) {
+                const prevEl = document.getElementById(`btn-${currentRecordingId}`);
+                prevEl.dataset.value = previousValue;
+                prevEl.innerText = previousLabel;
+                prevEl.classList.remove('recording');
+            }
+
+            if (currentRecordingId === btnId) return;
+
+            currentRecordingId = btnId;
+            previousValue = el.dataset.value;
+            previousLabel = el.innerText;
+
+            recordingStep = 0;
+            capturedKeys = [];
+            recordingPrompts = [];
+
+            document.querySelectorAll('.btn-overlay').forEach(e => e.classList.remove('recording'));
+            el.classList.add('recording');
+
+            const mode = document.querySelector('input[name="bindMode"]:checked').value;
+            const comp1 = document.getElementById('useCompound1').checked;
+            const comp2 = document.getElementById('useCompound2').checked;
+
+            if (mode === "0") {
+                if (comp1) recordingPrompts.push("Key 1?", "Key 2?");
+                else recordingPrompts.push("?");
+            } else {
+                if (comp1) recordingPrompts.push("Rel Key 1?", "Rel Key 2?");
+                else recordingPrompts.push("Rel Key?");
+
+                if (comp2) recordingPrompts.push("Hold Key 1?", "Hold Key 2?");
+                else recordingPrompts.push("Hold Key?");
+            }
+
+            el.innerText = recordingPrompts[0];
+        }
+
+        function getCodeFromChar(char) {
+            if (!char) return 0;
+            if (char === " ") return 13;
+            const upper = char.toUpperCase();
+            if (upper.length === 1 && upper >= "A" && upper <= "Z") return keyMap["Key" + upper] || 0;
+            if (upper.length === 1 && upper >= "0" && upper <= "9") return keyMap["Digit" + upper] || 0;
+            if (symbolMap[char]) return keyMap[symbolMap[char]] || 0;
+            return 0;
+        }
+
+        function setMapping(code) {
+            if (!currentRecordingId || code === 0) return;
+
+            const el = document.getElementById(`btn-${currentRecordingId}`);
+
+            capturedKeys.push(code);
+            recordingStep++;
+
+            if (recordingStep < recordingPrompts.length) {
+                el.style.backgroundColor = "rgba(255, 255, 0, 0.5)";
+                setTimeout(() => el.style.backgroundColor = "", 150);
+
+                el.innerText = recordingPrompts[recordingStep];
+
+                const hiddenInput = document.getElementById('virtual-key-input');
+                hiddenInput.value = "."; // Reset for next key
+                hiddenInput.focus();
+            } else {
+                let finalString = "";
+                let displayText = "";
+
+                const mode = document.querySelector('input[name="bindMode"]:checked').value;
+                const comp1 = document.getElementById('useCompound1').checked;
+                const comp2 = document.getElementById('useCompound2').checked;
+
+                if (mode === "0") {
+                    if (comp1) {
+                        finalString = `${capturedKeys[0]}+${capturedKeys[1]}`;
+                        displayText = `${getLabel(capturedKeys[0])}+${getLabel(capturedKeys[1])}`;
+                    } else {
+                        finalString = `${capturedKeys[0]}`;
+                        displayText = `${getLabel(capturedKeys[0])}`;
+                    }
+                } else {
+                    let relStr = "", relDisp = "";
+                    let holdStr = "", holdDisp = "";
+                    let holdIdx = 1;
+
+                    if (comp1) {
+                        relStr = `^(${capturedKeys[0]}+${capturedKeys[1]})`;
+                        relDisp = `${getLabel(capturedKeys[0])}+${getLabel(capturedKeys[1])}`;
+                        holdIdx = 2;
+                    } else {
+                        relStr = `^${capturedKeys[0]}`;
+                        relDisp = `${getLabel(capturedKeys[0])}`;
+                    }
+
+                    if (comp2) {
+                        holdStr = `*(${capturedKeys[holdIdx]}+${capturedKeys[holdIdx + 1]})`;
+                        holdDisp = `${getLabel(capturedKeys[holdIdx])}+${getLabel(capturedKeys[holdIdx + 1])}`;
+                    } else {
+                        holdStr = `*${capturedKeys[holdIdx]}`;
+                        holdDisp = `${getLabel(capturedKeys[holdIdx])}`;
+                    }
+
+                    finalString = `${relStr}+${holdStr}`;
+                    displayText = `${relDisp} / ${holdDisp}`;
+                }
+
+                el.dataset.value = finalString;
+                el.innerText = displayText;
+                el.title = displayText;
+
+                if (activeLayer === 'Basic') { el.dataset.valBasic = finalString; el.dataset.txtBasic = displayText; }
+                else if (activeLayer === 'Fn1') { el.dataset.valFn1 = finalString; el.dataset.txtFn1 = displayText; }
+                else if (activeLayer === 'Fn2') { el.dataset.valFn2 = finalString; el.dataset.txtFn2 = displayText; }
+
+                finishRecording(el);
+            }
+        }
+
+        function finishRecording(el) {
+            el.classList.remove('recording');
+            el.style.backgroundColor = "";
+            currentRecordingId = null;
+            previousValue = null;
+            previousLabel = null;
+            recordingStep = 0;
+            capturedKeys = [];
+            recordingPrompts = [];
+            document.getElementById('virtual-key-input').blur();
+        }
+
+        // ANDROID INPUT HANDLING
+        document.getElementById('virtual-key-input').addEventListener('input', (e) => {
+            if (currentRecordingId) {
+                if (e.inputType === 'deleteContentBackward') {
+                    setMapping(18); // Backspace Code
+                    e.target.value = "."; // Reset just in case
+                    return;
+                }
+
+                // Enter
+                if (e.inputType === 'insertLineBreak' || (e.data && e.data.includes('\n'))) {
+                    setMapping(2); // Enter Code
+                    e.target.value = ".";
+                    return;
+                }
+
+                // Normal Characters
+                if (e.data) {
+                    const char = e.data.slice(-1);
+                    if (char === '\n') return;
+                    const code = getCodeFromChar(char);
+                    if (code !== 0) {
+                        setMapping(code);
+                        e.target.value = ".";
+                    }
+                }
+            }
+        });
+
+        // DESKTOP / HARDWARE KEY HANDLING
+        document.addEventListener('keydown', (e) => {
+            if (currentRecordingId) {
+                // Special keys check
+                if (e.key === "Backspace") { e.preventDefault(); setMapping(18); return; }
+                if (e.key === "Enter") { e.preventDefault(); setMapping(2); return; }
+                if (e.key === "Escape") { e.preventDefault(); setMapping(1); return; }
+                if (e.key === "Tab") { e.preventDefault(); setMapping(3); return; }
+                if (e.key === " ") { e.preventDefault(); setMapping(13); return; }
+
+                if (e.code === 'Unidentified' || e.keyCode === 229) { return; }
+
+                const isSimpleChar = e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey;
+                if (isSimpleChar) return;
+
+                if (e.code === "NumLock") { setMapping(keyMap["NumLock"]); return; }
+
+                let codeKey = e.code;
+                let code = keyMap[codeKey] || 0;
+                if (code !== 0) setMapping(code);
+            }
+        });
+
+        document.addEventListener('mousedown', (e) => {
+            if (currentRecordingId) {
+                if (e.target.id === 'virtual-key-input') return;
+                e.preventDefault();
+                e.stopPropagation();
+                let code = -1;
+                if (e.button === 1) code = -3;
+                if (e.button === 2) code = -2;
+                if (e.button === 3) code = -4;
+                if (e.button === 4) code = -5;
+                setMapping(code);
+            }
+        });
+        document.addEventListener('wheel', (e) => {
+            if (currentRecordingId) {
+                e.preventDefault();
+                setMapping((e.deltaY < 0) ? -6 : -7);
+            }
+        }, { passive: false });
+        document.addEventListener('contextmenu', e => {
+            if (!e.target.closest('.btn-overlay')) {
+                e.preventDefault();
+                const menu = document.getElementById('custom-context-menu');
+                if (menu) menu.classList.remove('show');
+            }
+        });
+
+        window.addEventListener("gamepadconnected", (e) => {
+            gamepadIndex = e.gamepad.index;
+            document.getElementById("gp-status").innerText = `Connected: ${e.gamepad.id}`;
+            document.getElementById("gp-status").className = "connected";
+            requestAnimationFrame(gamepadLoop);
+        });
+        window.addEventListener("gamepaddisconnected", () => {
+            gamepadIndex = null;
+            document.getElementById("gp-status").innerText = "Disconnected";
+            document.getElementById("gp-status").className = "disconnected";
+        });
+
+        let prevButtons = [], prevAxes = [];
+        const AXIS_DEADZONE = 0.5;
+
+        function gamepadLoop() {
+            if (gamepadIndex === null) return;
+            const gp = navigator.getGamepads()[gamepadIndex];
+            if (!gp) return;
+
+            gp.buttons.forEach((b, i) => {
+                const mappedBtn = xinputButtons.find(btn => btn.idx === i);
+                if (mappedBtn) {
+                    const el = document.getElementById(`btn-${mappedBtn.id}`);
+                    if (el && !el.classList.contains('disabled')) {
+                        if (b.pressed) {
+                            if (!prevButtons[i]) {
+                                handleControllerPress(mappedBtn.id);
+                            }
+                            el.classList.add('active-controller');
+                        } else {
+                            el.classList.remove('active-controller');
+                        }
+                    }
+                }
+                prevButtons[i] = b.pressed;
+            });
+
+            if (gp.axes && gp.axes.length >= 4) {
+                checkAxis(gp.axes[0], prevAxes[0], 'LSL', 'LSR');
+                checkAxis(gp.axes[1], prevAxes[1], 'LSU', 'LSD');
+                checkAxis(gp.axes[2], prevAxes[2], 'RSL', 'RSR');
+                checkAxis(gp.axes[3], prevAxes[3], 'RSU', 'RSD');
+            }
+            prevAxes = [...gp.axes];
+            requestAnimationFrame(gamepadLoop);
+        }
+
+        function checkAxis(curr, prev, negId, posId) {
+            const neg = curr < -AXIS_DEADZONE;
+            const pos = curr > AXIS_DEADZONE;
+            const pNeg = prev < -AXIS_DEADZONE;
+            const pPos = prev > AXIS_DEADZONE;
+
+            const negEl = document.getElementById(`btn-${negId}`);
+            const posEl = document.getElementById(`btn-${posId}`);
+
+            if (neg && !pNeg && negEl && !negEl.classList.contains('disabled')) handleControllerPress(negId);
+            if (pos && !pPos && posEl && !posEl.classList.contains('disabled')) handleControllerPress(posId);
+
+            if (neg && negEl) negEl.classList.add('active-controller'); else if (negEl) negEl.classList.remove('active-controller');
+            if (pos && posEl) posEl.classList.add('active-controller'); else if (posEl) posEl.classList.remove('active-controller');
+        }
+
+        function handleControllerPress(id) {
+            if (pendingModifier) {
+                assignModifier(id, pendingModifier);
+            } else {
+                startRecording(id);
+            }
+        }
+
+        function resetToDefaults() {
+            if (!confirm("Reset all your configuration?")) return;
+
+            document.getElementById('GameName').value = "";
+            document.getElementById('InputMethod').value = "2";
+            document.getElementById('ThumbstickToMouse').value = "0";
+            document.getElementById('DrawProtoFakeCursor').checked = false;
+
+            document.getElementById('Sensitivity').value = "2.60";
+            document.getElementById('Sensitivity_Multiplier').value = "2.40";
+            document.getElementById('Horizontal_Sensitivity').value = "0.00";
+            document.getElementById('Vertical_Sensitivity').value = "0.00";
+            document.getElementById('Max_Threshold').value = "0.150";
+            document.getElementById('Look_Accel_Multiplier').value = "1.380";
+            document.getElementById('Curve_Slope').value = "0.145";
+            document.getElementById('Curve_Exponent').value = "1.660";
+
+            document.getElementById('Radial_Deadzone').value = "0.10";
+            document.getElementById('Axial_Deadzone').value = "0.0";
+            document.getElementById('StickAsButtonDeadzone').value = "0.25";
+            document.getElementById('TriggerThreshold').value = "40";
+
+            document.getElementById('GetCursorposHook').checked = true;
+            document.getElementById('SetCursorposHook').checked = true;
+            document.getElementById('ClipCursorHook').checked = true;
+            document.getElementById('GetKeystateHook').checked = true;
+            document.getElementById('GetAsynckeystateHook').checked = true;
+            document.getElementById('GetKeyboardstateHook').checked = true;
+
+            document.getElementById('RawInputFilter').checked = false;
+            document.getElementById('MouseMoveFilter').checked = false;
+            document.getElementById('MouseActivateFilter').checked = false;
+            document.getElementById('WindowActivateFilter').checked = false;
+            document.getElementById('WindowActivateAppFilter').checked = false;
+            document.getElementById('MouseWheelFilter').checked = false;
+            document.getElementById('MouseButtonFilter').checked = false;
+            document.getElementById('KeyboardButtonFilter').checked = false;
+
+            document.querySelector('input[name="bindMode"][value="0"]').checked = true;
+            document.getElementById('useCompound1').checked = false;
+            document.getElementById('useCompound2').checked = false;
+
+            cancelModifier();
+
+            xinputButtons.forEach(btn => {
+                const el = document.getElementById(`btn-${btn.id}`);
+                const displayLabel = (btn.val == "0") ? "None" : getLabel(btn.val);
+
+                let fnDefault = "0";
+                if (btn.id === 'LSU') fnDefault = "47";
+                if (btn.id === 'LSD') fnDefault = "43";
+                if (btn.id === 'LSL') fnDefault = "25";
+                if (btn.id === 'LSR') fnDefault = "28";
+
+                el.dataset.valBasic = btn.val;
+                el.dataset.txtBasic = displayLabel;
+
+                el.dataset.valFn1 = fnDefault;
+                el.dataset.txtFn1 = (fnDefault == "0") ? "None" : getLabel(fnDefault);
+
+                el.dataset.valFn2 = fnDefault;
+                el.dataset.txtFn2 = (fnDefault == "0") ? "None" : getLabel(fnDefault);
+
+                el.classList.remove('recording', 'active-controller');
+            });
+
+            // Sync all sliders back to their reset values
+            const hybridIds = [
+                'Sensitivity', 'Sensitivity_Multiplier', 'Horizontal_Sensitivity', 'Vertical_Sensitivity',
+                'Max_Threshold', 'Look_Accel_Multiplier', 'Curve_Slope', 'Curve_Exponent',
+                'Radial_Deadzone', 'Axial_Deadzone', 'StickAsButtonDeadzone', 'TriggerThreshold'
+            ];
+            hybridIds.forEach(id => syncHybrid(id, true));
+
+            document.querySelector('input[name="layerSwitch"][value="Basic"]').checked = true;
+            switchLayer('Basic');
+
+            updateBindUI();
+            updateUIState();
+            updateCurveChart();
+        }
+
+        // INI IMPORT
+        function parseINI(data) {
+            const regex = {
+                section: /^\s*\[\s*([^\]]*)\s*\]\s*$/,
+                param: /^\s*([^=]+?)\s*=\s*(.*?)\s*$/
+            };
+            const value = {};
+            let lines = data.split(/[\r\n]+/);
+            let section = null;
+            lines.forEach(function (line) {
+                if (regex.section.test(line)) {
+                    let match = line.match(regex.section);
+                    section = match[1];
+                    value[section] = {};
+                } else if (regex.param.test(line)) {
+                    let match = line.match(regex.param);
+                    if (section) {
+                        value[section][match[1]] = match[2];
+                    }
+                }
+            });
+            return value;
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Strict Validation
+            if (file.name !== 'GtoMnK.ini') {
+                alert("The configuration file must be named exactly 'GtoMnK.ini'.");
+                event.target.value = ""; // Reset input so they can try again
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const text = e.target.result;
+                const parsedData = parseINI(text);
+
+                loadINI(parsedData);
+                event.target.value = ""; // Reset input after successful load
+            };
+            reader.readAsText(file);
+        }
+
+        function loadINI(data) {
+            // Helper to safely set elements if they exist in the uploaded INI
+            const setVal = (section, key, elementId) => {
+                if (data[section] && data[section][key] !== undefined) {
+                    const el = document.getElementById(elementId || key);
+                    if (el) {
+                        if (el.type === 'checkbox') el.checked = (data[section][key] === "1");
+                        else el.value = data[section][key];
+
+                        const slider = document.getElementById((elementId || key) + '_slider');
+                        if (slider) slider.value = data[section][key];
+                    }
+                }
+            };
+
+            // Basic Info & Settings
+            setVal('Info', 'Name', 'GameName');
+            setVal('API', 'InputMethod');
+
+            // Hooks
+            setVal('Hooks', 'GetCursorposHook');
+            setVal('Hooks', 'SetCursorposHook');
+            setVal('Hooks', 'ClipCursorHook');
+            setVal('Hooks', 'GetKeystateHook');
+            setVal('Hooks', 'GetAsynckeystateHook');
+            setVal('Hooks', 'GetKeyboardstateHook');
+
+            // Filters
+            setVal('MessageFilter', 'RawInputFilter');
+            setVal('MessageFilter', 'MouseMoveFilter');
+            setVal('MessageFilter', 'MouseActivateFilter');
+            setVal('MessageFilter', 'WindowActivateFilter');
+            setVal('MessageFilter', 'WindowActivateAppFilter');
+            setVal('MessageFilter', 'MouseWheelFilter');
+            setVal('MessageFilter', 'MouseButtonFilter');
+            setVal('MessageFilter', 'KeyboardButtonFilter');
+
+            // Sensitivity & Deadzones
+            setVal('Settings', 'DrawProtoFakeCursor');
+            setVal('StickToMouse', 'Sensitivity');
+            setVal('StickToMouse', 'Sensitivity_Multiplier');
+            setVal('StickToMouse', 'Horizontal_Sensitivity');
+            setVal('StickToMouse', 'Vertical_Sensitivity');
+            setVal('StickToMouse', 'Max_Threshold');
+            setVal('StickToMouse', 'Radial_Deadzone');
+            setVal('StickToMouse', 'Axial_Deadzone');
+            setVal('StickToMouse', 'Look_Accel_Multiplier');
+            setVal('StickToMouse', 'Curve_Slope');
+            setVal('StickToMouse', 'Curve_Exponent');
+
+            // Other mappings
+            setVal('KeyMapping', 'StickAsButtonDeadzone');
+            setVal('KeyMapping', 'TriggerThreshold');
+
+            // Legacy Thumbstick to Mouse Handling
+            let loadedThumbstick = 0;
+            if (data['StickToMouse'] && data['StickToMouse']['ThumbStickToMouse'] !== undefined) {
+                loadedThumbstick = parseInt(data['StickToMouse']['ThumbStickToMouse']);
+            } else {
+                // Translate legacy INI values if the new key is missing
+                let legacyMode = -1;
+                let legacyRight = -1;
+                if (data['Settings'] && data['Settings']['Mode'] !== undefined) legacyMode = parseInt(data['Settings']['Mode']);
+                if (data['StickToMouse'] && data['StickToMouse']['Righthanded'] !== undefined) legacyRight = parseInt(data['StickToMouse']['Righthanded']);
+
+                if (legacyMode === 1) {
+                    loadedThumbstick = (legacyRight === 0) ? 1 : 2;
+                }
+            }
+            const elThumb = document.getElementById('ThumbstickToMouse');
+            if (elThumb) elThumb.value = loadedThumbstick;
+
+            // Process Buttons Across Layers
+            Object.keys(positions).forEach(id => {
+                const el = document.getElementById(`btn-${id}`);
+                if (!el) return;
+
+                // Basic Layer
+                if (data['KeyMapping'] && data['KeyMapping'][id] !== undefined) {
+                    const val = data['KeyMapping'][id];
+                    el.dataset.valBasic = val;
+                    el.dataset.txtBasic = val === "0" ? "None" : (val === "Fn1" || val === "Fn2" ? val : getLabel(val));
+                }
+
+                // Fn1 Layer
+                if (data['Fn1'] && data['Fn1'][id] !== undefined) {
+                    const val = data['Fn1'][id];
+                    el.dataset.valFn1 = val;
+                    el.dataset.txtFn1 = val === "0" ? "None" : getLabel(val);
+                }
+
+                // Fn2 Layer
+                if (data['Fn2'] && data['Fn2'][id] !== undefined) {
+                    const val = data['Fn2'][id];
+                    el.dataset.valFn2 = val;
+                    el.dataset.txtFn2 = val === "0" ? "None" : getLabel(val);
+                }
+            });
+
+            // Force visual refresh to Basic layer after import
+            document.querySelector('input[name="layerSwitch"][value="Basic"]').checked = true;
+            switchLayer('Basic');
+            updateBindUI();
+            updateUIState();
+            updateCurveChart();
+        }
+
+        // INI EXPORT
+        function generateINI() {
+            const getSet = (id) => {
+                const el = document.getElementById(id);
+                if (!el) return "0";
+                if (el.type === 'checkbox') return el.checked ? 1 : 0;
+                return el.value;
+            }
+
+            const getLayerVal = (id, layer) => {
+                const el = document.getElementById(`btn-${id}`);
+                if (!el) return "0";
+                if (layer === 'Basic') return el.dataset.valBasic;
+                if (layer === 'Fn1') return el.dataset.valFn1;
+                if (layer === 'Fn2') return el.dataset.valFn2;
+                return "0";
+            }
+
+            const buttonGroups = [
+                ["A", "B", "X", "Y"],
+                ["D_UP", "D_DOWN", "D_LEFT", "D_RIGHT"],
+                ["RB", "LB", "RSB", "LSB"],
+                ["RT", "LT"],
+                ["LSU", "LSD", "LSL", "LSR"],
+                ["RSU", "RSD", "RSL", "RSR"],
+                ["Start", "Back"]
+            ];
+
+            const buildSection = (layer) => {
+                return buttonGroups.map(group =>
+                    group.map(id => `${id}=${getLayerVal(id, layer)}`).join('\n')
+                ).join('\n\n');
+            };
+
+            // Check if Fn1 or Fn2 modifiers actually exist on the Basic layer
+            const buttons = Array.from(document.querySelectorAll('.btn-overlay'));
+            const hasFn1 = buttons.some(el => el.dataset.valBasic === 'Fn1');
+            const hasFn2 = buttons.some(el => el.dataset.valBasic === 'Fn2');
+
+            // Build the extra layers string conditionally
+            let extraLayers = "";
+            if (hasFn1) {
+                extraLayers += `\n[Fn1]\n${buildSection('Fn1')}\n`;
+            }
+            if (hasFn2) {
+                extraLayers += `\n[Fn2]\n${buildSection('Fn2')}\n`;
+            }
+
+            const iniContent = `[Info]
+Name=${getSet('GameName')}
+Ver=1.4.0
+
+[API]
+InputMethod=${getSet('InputMethod')}
+
+[Hooks]
+GetCursorposHook=${getSet('GetCursorposHook')}
+SetCursorposHook=${getSet('SetCursorposHook')}
+ClipCursorHook=${getSet('ClipCursorHook')}
+
+GetKeystateHook=${getSet('GetKeystateHook')}
+GetAsynckeystateHook=${getSet('GetAsynckeystateHook')}
+GetKeyboardstateHook=${getSet('GetKeyboardstateHook')}
+
+[MessageFilter]
+RawInputFilter=${getSet('RawInputFilter')}
+MouseMoveFilter=${getSet('MouseMoveFilter')}
+MouseActivateFilter=${getSet('MouseActivateFilter')}
+WindowActivateFilter=${getSet('WindowActivateFilter')}
+WindowActivateAppFilter=${getSet('WindowActivateAppFilter')}
+MouseWheelFilter=${getSet('MouseWheelFilter')}
+MouseButtonFilter=${getSet('MouseButtonFilter')}
+KeyboardButtonFilter=${getSet('KeyboardButtonFilter')}
+
+[Settings]
+Controllerid=0
+DrawProtoFakeCursor=${getSet('DrawProtoFakeCursor')}
+StartUpDelay=0
+
+[StickToMouse]
+ThumbStickToMouse=${getSet('ThumbstickToMouse')}
+
+Sensitivity=${getSet('Sensitivity')}
+Sensitivity_Multiplier=${getSet('Sensitivity_Multiplier')}
+Horizontal_Sensitivity=${getSet('Horizontal_Sensitivity')}
+Vertical_Sensitivity=${getSet('Vertical_Sensitivity')}
+Max_Threshold=${getSet('Max_Threshold')}
+
+Radial_Deadzone=${getSet('Radial_Deadzone')}
+Axial_Deadzone=${getSet('Axial_Deadzone')}
+
+Look_Accel_Multiplier=${getSet('Look_Accel_Multiplier')}
+Curve_Slope=${getSet('Curve_Slope')}
+Curve_Exponent=${getSet('Curve_Exponent')}
+
+[KeyMapping]
+EnableMouseDoubleClick=0
+StickAsButtonDeadzone=${getSet('StickAsButtonDeadzone')}
+TriggerThreshold=${getSet('TriggerThreshold')}
+
+${buildSection('Basic')}
+${extraLayers}`;
+
+            const blob = new Blob([iniContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'GtoMnK.ini';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Sensitivity curve graph logic
+        let curveChartInstance = null;
+
+        function updateCurveChart() {
+            const radial_deadzone = parseFloat(document.getElementById('Radial_Deadzone').value) || 0;
+            const curve_slope = parseFloat(document.getElementById('Curve_Slope').value) || 0;
+            const curve_exponent = parseFloat(document.getElementById('Curve_Exponent').value) || 1;
+            const max_threshold = parseFloat(document.getElementById('Max_Threshold').value) || 0;
+            const look_accel_multiplier = parseFloat(document.getElementById('Look_Accel_Multiplier').value) || 1;
+
+            const dataPoints = [];
+            for (let i = 0; i <= 100; i++) {
+                let rawMagnitude = i / 100.0;
+                let y = 0.0;
+
+                if (rawMagnitude >= radial_deadzone) {
+                    let effectiveRange = 1.0 - radial_deadzone;
+                    if (effectiveRange < 1e-6) effectiveRange = 1.0;
+
+                    let x = (rawMagnitude - radial_deadzone) / effectiveRange;
+                    x = Math.max(0.0, Math.min(1.0, x));
+
+                    let accelBoundary = 1.0 - max_threshold;
+                    accelBoundary = Math.max(0.0, Math.min(1.0, accelBoundary));
+
+                    if (x <= accelBoundary) {
+                        y = (curve_slope * x) + (1.0 - curve_slope) * Math.pow(x, curve_exponent);
+                    } else {
+                        let kneeValue = (curve_slope * accelBoundary) + (1.0 - curve_slope) * Math.pow(accelBoundary, curve_exponent);
+                        let rampWidth = 1.0 - accelBoundary;
+
+                        if (rampWidth <= 1e-6) {
+                            y = look_accel_multiplier;
+                        } else {
+                            let rampProgress = (x - accelBoundary) / rampWidth;
+                            y = kneeValue + (look_accel_multiplier - kneeValue) * rampProgress;
+                        }
+                    }
+                }
+                dataPoints.push({ x: rawMagnitude, y: y });
+            }
+
+            const ctx = document.getElementById('curveChart');
+            if (!ctx) return;
+
+            if (curveChartInstance) {
+                curveChartInstance.data.datasets[0].data = dataPoints;
+                curveChartInstance.options.scales.y.suggestedMax = Math.max(1, look_accel_multiplier * 1.1);
+                curveChartInstance.update();
+            } else {
+                Chart.defaults.color = '#ccc';
+                curveChartInstance = new Chart(ctx.getContext('2d'), {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Curve Multiplier',
+                            data: dataPoints,
+                            borderColor: '#007acc',
+                            backgroundColor: 'rgba(0, 122, 204, 0.2)',
+                            showLine: true,
+                            pointRadius: 0,
+                            borderWidth: 2,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 150 },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                title: { display: true, text: 'Raw Stick Deflection' },
+                                min: 0, max: 1,
+                                grid: { color: '#333' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Output Speed Multiplier' },
+                                min: 0,
+                                suggestedMax: Math.max(1.2, look_accel_multiplier * 1.1),
+                                grid: { color: '#333' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => `Input: ${ctx.parsed.x.toFixed(2)}, Speed: ${ctx.parsed.y.toFixed(2)}x`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Initialize UI State
+        updateBindUI();
+        updateUIState();
+        setTimeout(updateCurveChart, 100);
+    </script>
+</body>
+</html>
